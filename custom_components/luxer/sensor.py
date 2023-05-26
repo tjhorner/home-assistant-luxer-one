@@ -29,7 +29,7 @@ async def async_setup_entry(
 class PendingPackageSensor(SensorEntity):
     """Representation of a Sensor."""
 
-    _attr_name = "Pending Packages"
+    _attr_name = "Pending Luxer Packages"
     _attr_native_unit_of_measurement = "packages"
     _attr_has_entity_name = True
     _attr_icon = "mdi:package"

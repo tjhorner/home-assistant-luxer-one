@@ -1,0 +1,20 @@
+{
+    "config": {
+        "step": {
+            "user": {
+                "data": {
+                    "username": "Username",
+                    "password": "Password"
+                }
+            }
+        },
+        "error": {
+            "cannot_connect": "Can't connect to the Luxer One service",
+            "invalid_auth": "Invalid credentials",
+            "unknown": "Something went wrong"
+        },
+        "abort": {
+            "already_configured": "This account has already been configured"
+        }
+    }
+}
