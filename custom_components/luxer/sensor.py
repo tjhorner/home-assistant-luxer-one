@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import json
 from datetime import timedelta
 
 from homeassistant.components.sensor import SensorEntity
@@ -41,7 +42,12 @@ class PendingPackageSensor(SensorEntity):
     async def async_update(self) -> None:
         pending_packages = await self._luxer_api.pending_packages()
         self._attr_native_value = len(pending_packages["data"])
+
         if len(pending_packages["data"]) > 0:
             self._attr_entity_picture = pending_packages["data"][0]["labels"][0]
         else:
             self._attr_entity_picture = None
+
+        self._attr_extra_state_attributes = {
+            "packages_json": json.dumps(pending_packages)
+        }
