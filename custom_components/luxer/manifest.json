@@ -1,0 +1,16 @@
+{
+  "domain": "luxer",
+  "name": "Luxer One",
+  "codeowners": [
+    "@tjhorner"
+  ],
+  "version": "0.1.0",
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://www.home-assistant.io/integrations/luxer",
+  "homekit": {},
+  "iot_class": "cloud_polling",
+  "requirements": [],
+  "ssdp": [],
+  "zeroconf": []
+}
