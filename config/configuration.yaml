@@ -1,6 +1,12 @@
 # https://www.home-assistant.io/integrations/default_config/
 default_config:
 
+homeassistant:
+  auth_providers:
+    - type: trusted_networks
+      trusted_networks:
+        - 127.0.0.0/24
+
 # https://www.home-assistant.io/integrations/logger/
 logger:
   default: info

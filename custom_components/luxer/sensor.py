@@ -48,6 +48,4 @@ class PendingPackageSensor(SensorEntity):
         else:
             self._attr_entity_picture = None
 
-        self._attr_extra_state_attributes = {
-            "packages_json": json.dumps(pending_packages["data"])
-        }
+        self._attr_extra_state_attributes = {"packages_json": pending_packages["data"]}
