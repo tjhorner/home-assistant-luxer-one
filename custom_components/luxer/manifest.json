@@ -4,13 +4,11 @@
   "codeowners": [
     "@tjhorner"
   ],
-  "version": "0.1.0",
   "config_flow": true,
   "dependencies": [],
   "documentation": "https://www.home-assistant.io/integrations/luxer",
-  "homekit": {},
+  "integration_type": "service",
   "iot_class": "cloud_polling",
   "requirements": [],
-  "ssdp": [],
-  "zeroconf": []
+  "version": "0.2.0"
 }

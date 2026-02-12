@@ -1,93 +1,111 @@
-import aiohttp
+"""Luxer One API client for the v2 API."""
+
+from __future__ import annotations
+
 import uuid
+from typing import Any
+
+import aiohttp
 
 
 class LuxerOneAuthorizationError(Exception):
-    pass
+    """Raised when the API rejects the current token."""
 
 
 class LuxerOneClient:
+    """Client for the Luxer One v2 API."""
+
+    BASE_URL = "https://resident-api.luxerone.com/resident_api/v2"
+
     def __init__(
-        self, username: str, password: str, session: aiohttp.ClientSession | None = None
+        self,
+        email: str,
+        token: str | None = None,
+        session: aiohttp.ClientSession | None = None,
     ) -> None:
-        self.base_url = "https://resident-api.luxerone.com/resident_api/v1"
-        self.username = username
-        self.password = password
-        self.token = None
+        """Initialize the Luxer One API client."""
+        self.email = email
+        self.token = token
 
         if session is None:
             self.session = aiohttp.ClientSession()
         else:
             self.session = session
 
-    async def get_auth_headers(self):
-        if not self.token:
-            return {}
-        return {"Authorization": f"LuxerOneApi {self.token}"}
+    def _auth_headers(self) -> dict[str, str]:
+        headers: dict[str, str] = {
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+        }
+        if self.token:
+            headers["Authorization"] = f"LuxerOneApi {self.token}"
+        return headers
 
-    async def check_response(self, response):
-        json_data = await response.json()
-        if json_data.get("error") == "ApiAuthorizationRequired":
-            await self.login()
-            return True
-        return False
-
-    async def request(
-        self, method, endpoint, data=None, params=None, is_retry=False
-    ) -> dict:
-        url = self.base_url + endpoint
-        headers = await self.get_auth_headers()
+    async def request(self, method: str, endpoint: str, **kwargs: Any) -> dict:
+        """Perform an HTTP request and return the parsed JSON response."""
+        url = f"{self.BASE_URL}{endpoint}"
+        headers = self._auth_headers()
 
         async with self.session.request(
-            method, url, data=data, params=params, headers=headers
+            method, url, headers=headers, **kwargs
         ) as response:
-            reauthorized = await self.check_response(response)
-            if reauthorized and not is_retry:
-                return await self.request(
-                    method, endpoint, data=data, params=params, is_retry=True
-                )
-            elif reauthorized and is_retry:
-                raise LuxerOneAuthorizationError(
-                    "Reauthorization failed when calling Luxer One API - credentials may be invalid."
-                )
-            else:
-                return await response.json()
+            json_data: dict = await response.json()
 
-    async def get(self, endpoint, params=None):
+            if json_data.get("error") == "ApiAuthorizationRequired":
+                msg = "Token rejected by Luxer One API - reauthentication required."
+                raise LuxerOneAuthorizationError(msg)
+
+            return json_data
+
+    async def get(self, endpoint: str, params: dict | None = None) -> dict:
+        """Perform a GET request."""
         return await self.request("GET", endpoint, params=params)
 
-    async def post(self, endpoint, data=None):
-        return await self.request("POST", endpoint, data=data)
+    async def post(self, endpoint: str, body: dict | None = None) -> dict:
+        """Perform a POST request with a JSON body."""
+        return await self.request("POST", endpoint, json=body)
 
-    async def login(self):
-        req_id = hex(uuid.uuid4().int & (1 << 64) - 1)[2:]
+    @staticmethod
+    def generate_uuid() -> str:
+        """Return a device UUID in the format expected by the API."""
+        return str(uuid.uuid4()).upper()
 
-        login_response = await self.post(
-            "/auth/login",
+    async def request_otp(self) -> bool:
+        """Request an OTP code to be sent to the configured email."""
+        resp = await self.post("/auth/loginUsingEmail", {"email": self.email})
+        return resp.get("status") == "OK"
+
+    async def verify_otp(self, otp: str, device_uuid: str) -> str:
+        """Verify the OTP and return the long-lived API token."""
+        resp = await self.post(
+            "/auth/verifyOtpUsingEmail",
             {
-                "username": self.username,
-                "password": self.password,
-                "uuid": req_id,
+                "email": self.email,
+                "uuid": device_uuid,
+                "otp": otp,
                 "as": "token",
-                "expires": 1800,
-                "remember": True,
             },
         )
+        token: str = resp["token"]
+        self.token = token
+        return token
 
-        short_token = login_response["data"]["token"]
-        self.token = short_token
+    async def logout(self) -> None:
+        """Revoke the current token."""
+        if self.token:
+            await self.post("/auth/logout", {"revoke": self.token})
+            self.token = None
 
-        token_response = await self.post(
-            "/auth/longterm", {"as": "token", "expire": 18000000}
-        )
-
-        self.token = token_response["data"]["token"]
-
-    async def user_info(self):
+    async def user_info(self) -> dict:
+        """Return user profile information (flat dict, no 'data' wrapper)."""
         return await self.get("/user/info")
 
-    async def pending_packages(self):
-        return await self.get("/deliveries/pendings")
+    async def pending_packages(self) -> list[dict]:
+        """Return the list of pending deliveries."""
+        resp = await self.get("/deliveries/pendings")
+        return resp.get("deliveries", [])
 
-    async def package_history(self):
-        return await self.get("/deliveries/history")
+    async def locations(self) -> list[dict]:
+        """Return the list of locker locations for this account."""
+        resp = await self.get("/locations/list")
+        return resp.get("locations", [])

@@ -1,51 +1,95 @@
 """Platform for sensor integration."""
+
 from __future__ import annotations
 
 import logging
-import json
-from datetime import timedelta
+from typing import TYPE_CHECKING, Any
 
 from homeassistant.components.sensor import SensorEntity
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
-from .luxerone import LuxerOneClient
+from .coordinator import LuxerDataUpdateCoordinator
+
+if TYPE_CHECKING:
+    from homeassistant.core import HomeAssistant
+    from homeassistant.helpers.entity_platform import AddEntitiesCallback
+
+    from . import LuxerConfigEntry
 
 _LOGGER = logging.getLogger(__name__)
 
-SCAN_INTERVAL = timedelta(minutes=5)
-
 
 async def async_setup_entry(
-    hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
+    _hass: HomeAssistant,
+    entry: LuxerConfigEntry,
+    async_add_entities: AddEntitiesCallback,
 ) -> None:
-    luxer_api = hass.data[DOMAIN][entry.entry_id]
-    async_add_entities(
-        [PendingPackageSensor(entry.entry_id, luxer_api=luxer_api)], True
-    )
+    """Set up Luxer One sensors - one per locker location."""
+    coordinator = entry.runtime_data
+
+    entities: list[LuxerPendingPackageSensor] = [
+        LuxerPendingPackageSensor(coordinator, entry.entry_id, location)
+        for location in coordinator.locations
+    ]
+
+    async_add_entities(entities)
 
 
-class PendingPackageSensor(SensorEntity):
-    """Representation of a Sensor."""
+class LuxerPendingPackageSensor(
+    CoordinatorEntity[LuxerDataUpdateCoordinator], SensorEntity
+):
+    """Sensor showing the number of pending packages at a Luxer location."""
 
-    _attr_name = "Pending Luxer Packages"
     _attr_native_unit_of_measurement = "packages"
     _attr_has_entity_name = True
     _attr_icon = "mdi:package"
+    _attr_name = "Pending Packages"
 
-    def __init__(self, entry_id: str, luxer_api: LuxerOneClient) -> None:
-        self._attr_unique_id = entry_id
-        self._luxer_api = luxer_api
+    def __init__(
+        self,
+        coordinator: LuxerDataUpdateCoordinator,
+        entry_id: str,
+        location: dict[str, Any],
+    ) -> None:
+        """Initialize the sensor for a specific location."""
+        super().__init__(coordinator)
+        self._location_id: int = location["id"]
+        self._location_name: str = location["name"]
 
-    async def async_update(self) -> None:
-        pending_packages = await self._luxer_api.pending_packages()
-        self._attr_native_value = len(pending_packages["data"])
+        self._attr_unique_id = f"{entry_id}_{self._location_id}"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, str(self._location_id))},
+            name=self._location_name,
+            manufacturer="Luxer One",
+            entry_type=None,
+        )
 
-        if len(pending_packages["data"]) > 0:
-            self._attr_entity_picture = pending_packages["data"][0]["labels"][0]
-        else:
-            self._attr_entity_picture = None
+    @property
+    def _deliveries(self) -> list[dict[str, Any]]:
+        """Return the list of deliveries for this location."""
+        if self.coordinator.data is None:
+            return []
+        return self.coordinator.data.get(self._location_id, [])
 
-        self._attr_extra_state_attributes = {"packages_json": pending_packages["data"]}
+    @property
+    def native_value(self) -> int:
+        """Return the number of pending packages."""
+        return len(self._deliveries)
+
+    @property
+    def entity_picture(self) -> str | None:
+        """Return the label image of the first pending package, if any."""
+        deliveries = self._deliveries
+        if deliveries:
+            pictures = deliveries[0].get("deliveryPictures", {})
+            labels = pictures.get("labels", [])
+            if labels:
+                return labels[0]
+        return None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Expose the raw delivery data as an attribute."""
+        return {"packages_json": self._deliveries}

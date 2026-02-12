@@ -1,4 +1,5 @@
 # artifacts
+.ruff_cache
 __pycache__
 .pytest*
 *.egg-info
@@ -14,4 +15,3 @@ coverage.xml
 
 # Home Assistant configuration
 config/*
-!config/configuration.yaml

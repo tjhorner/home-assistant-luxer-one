@@ -1,50 +1,49 @@
 """The luxer integration."""
+
 from __future__ import annotations
 
 import logging
+from typing import TYPE_CHECKING
 
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_PASSWORD, CONF_USERNAME, Platform
-from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import ConfigEntryAuthFailed
+from homeassistant.const import Platform
 from homeassistant.helpers import aiohttp_client
 
-from .const import DOMAIN
+from .const import CONF_EMAIL, CONF_TOKEN
+from .const import DOMAIN as DOMAIN
+from .coordinator import LuxerDataUpdateCoordinator
 from .luxerone import LuxerOneClient
+
+if TYPE_CHECKING:
+    from homeassistant.config_entries import ConfigEntry
+    from homeassistant.core import HomeAssistant
 
 _LOGGER = logging.getLogger(__name__)
 
-# TODO List the platforms that you want to support.
-# For your initial PR, limit it to 1 platform.
+type LuxerConfigEntry = ConfigEntry[LuxerDataUpdateCoordinator]
+
 PLATFORMS: list[Platform] = [Platform.SENSOR]
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+async def async_setup_entry(hass: HomeAssistant, entry: LuxerConfigEntry) -> bool:
     """Set up luxer from a config entry."""
-
-    hass.data.setdefault(DOMAIN, {})
-
-    username = entry.data[CONF_USERNAME]
-    password = entry.data[CONF_PASSWORD]
+    email = entry.data[CONF_EMAIL]
+    token = entry.data[CONF_TOKEN]
 
     session = aiohttp_client.async_get_clientsession(hass)
-    luxer_api = LuxerOneClient(username, password, session)
+    client = LuxerOneClient(email, token, session)
 
-    try:
-        await luxer_api.login()
-    except Exception as ex:
-        raise ConfigEntryAuthFailed from ex
+    coordinator = LuxerDataUpdateCoordinator(hass, entry, client)
 
-    hass.data[DOMAIN][entry.entry_id] = luxer_api
+    # First refresh fetches locations (_async_setup) then deliveries
+    await coordinator.async_config_entry_first_refresh()
+
+    entry.runtime_data = coordinator
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     return True
 
 
-async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+async def async_unload_entry(hass: HomeAssistant, entry: LuxerConfigEntry) -> bool:
     """Unload a config entry."""
-    if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
-        hass.data[DOMAIN].pop(entry.entry_id)
-
-    return unload_ok
+    return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)

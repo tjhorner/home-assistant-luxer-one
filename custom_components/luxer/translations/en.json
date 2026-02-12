@@ -2,19 +2,39 @@
     "config": {
         "step": {
             "user": {
+                "title": "Luxer One Login",
+                "description": "Enter the email address associated with your Luxer One account. An OTP code will be sent to this address.",
                 "data": {
-                    "username": "Username",
-                    "password": "Password"
+                    "email": "Email"
+                }
+            },
+            "otp": {
+                "title": "Enter OTP Code",
+                "description": "A one-time code has been sent to {email}. Enter it below.",
+                "data": {
+                    "otp": "OTP Code"
+                }
+            },
+            "reauth_confirm": {
+                "title": "Reauthenticate Luxer One",
+                "description": "Your Luxer One session has expired. Press Submit to send a new OTP code to {email}."
+            },
+            "reauth_otp": {
+                "title": "Enter OTP Code",
+                "description": "A new one-time code has been sent to {email}. Enter it below.",
+                "data": {
+                    "otp": "OTP Code"
                 }
             }
         },
         "error": {
             "cannot_connect": "Can't connect to the Luxer One service",
-            "invalid_auth": "Invalid credentials",
+            "invalid_auth": "Invalid or expired OTP code",
             "unknown": "Something went wrong"
         },
         "abort": {
-            "already_configured": "This account has already been configured"
+            "already_configured": "This account has already been configured",
+            "reauth_successful": "Reauthentication successful"
         }
     }
 }
