@@ -110,7 +110,8 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self, entry_data: Mapping[str, Any]
     ) -> ConfigFlowResult:
         """Handle reauthentication when the token expires."""
-        self._email = entry_data[CONF_EMAIL]
+        # Support migrated v1 entries that may not have CONF_EMAIL yet
+        self._email = entry_data.get(CONF_EMAIL, entry_data.get("username", ""))
         self._uuid = entry_data.get(CONF_UUID, LuxerOneClient.generate_uuid())
         return await self.async_step_reauth_confirm()
 
@@ -120,6 +121,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Prompt user to start the reauth OTP flow."""
         errors: dict[str, str] = {}
         if user_input is not None:
+            self._email = user_input[CONF_EMAIL]
+            self._uuid = LuxerOneClient.generate_uuid()
+
             session = aiohttp_client.async_get_clientsession(self.hass)
             client = LuxerOneClient(self._email, session=session)
 
@@ -136,7 +140,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         return self.async_show_form(
             step_id="reauth_confirm",
-            data_schema=vol.Schema({}),
+            data_schema=vol.Schema(
+                {vol.Required(CONF_EMAIL, default=self._email): str}
+            ),
             errors=errors,
             description_placeholders={"email": self._email},
         )
@@ -158,7 +164,11 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             else:
                 return self.async_update_reload_and_abort(
                     self._get_reauth_entry(),
-                    data_updates={CONF_TOKEN: token},
+                    data_updates={
+                        CONF_EMAIL: self._email,
+                        CONF_TOKEN: token,
+                        CONF_UUID: self._uuid,
+                    },
                 )
 
         return self.async_show_form(

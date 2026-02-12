@@ -97,7 +97,7 @@ class LuxerOneClient:
             self.token = None
 
     async def user_info(self) -> dict:
-        """Return user profile information (flat dict, no 'data' wrapper)."""
+        """Return user profile information."""
         return await self.get("/user/info")
 
     async def pending_packages(self) -> list[dict]:

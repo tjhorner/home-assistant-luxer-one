@@ -10,3 +10,9 @@ The sensor state represents the number of packages at the location, and there is
    {{ packages[0]["labels"][0] }}
 {% endif %}
 ```
+
+## Migration from v0.1.0
+
+Version 0.1.0 of the integration created only a single sensor for all packages. Starting with version 0.2.0, multiple locker locations are supported and a sensor will be created for each.
+
+Additionally, you will be prompted to reauthenticate with an email-based one time password. You'll only need to do this once.

@@ -17,7 +17,10 @@
             },
             "reauth_confirm": {
                 "title": "Reauthenticate Luxer One",
-                "description": "Your Luxer One session has expired. Press Submit to send a new OTP code to {email}."
+                "description": "Confirm the email address for your Luxer One account. An OTP code will be sent to this address.",
+                "data": {
+                    "email": "Email"
+                }
             },
             "reauth_otp": {
                 "title": "Enter OTP Code",
