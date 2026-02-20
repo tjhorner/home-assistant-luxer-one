@@ -109,3 +109,18 @@ class LuxerOneClient:
         """Return the list of locker locations for this account."""
         resp = await self.get("/locations/list")
         return resp.get("locations", [])
+
+    async def get_available_rooms(self) -> list[dict]:
+        """Return rooms available for temporary access codes."""
+        resp = await self.get("/temporaryAccessCode/getAvailableRooms")
+        return resp.get("availableRooms", [])
+
+    async def create_temporary_access_code(
+        self, location_id: int, locker_id: int
+    ) -> int:
+        """Create a temporary access code and return the delivery ID."""
+        resp = await self.post(
+            "/temporaryAccessCode/create",
+            {"locationId": location_id, "lockerId": locker_id},
+        )
+        return resp["deliveryId"]

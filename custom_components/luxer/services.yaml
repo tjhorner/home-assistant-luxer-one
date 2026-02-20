@@ -1,0 +1,12 @@
+create_temporary_access_code:
+  fields:
+    device_id:
+      required: true
+      selector:
+        device:
+          integration: luxer
+    config_entry_id:
+      required: false
+      selector:
+        config_entry:
+          integration: luxer

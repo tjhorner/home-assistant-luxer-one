@@ -1,0 +1,18 @@
+{
+    "services": {
+        "create_temporary_access_code": {
+            "name": "Create temporary access code",
+            "description": "Creates a temporary access code for a Luxer One location, granting one-time access to a package room or locker.",
+            "fields": {
+                "device_id": {
+                    "name": "Location",
+                    "description": "The Luxer One location to create a temporary access code for."
+                },
+                "config_entry_id": {
+                    "name": "Account",
+                    "description": "The Luxer One account to use. Required only if you have multiple accounts configured."
+                }
+            }
+        }
+    }
+}
